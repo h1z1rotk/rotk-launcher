@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify:
-    name: TypeScript, tests et artefacts natifs
+    name: TypeScript, tests et DLL reproductibles
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -78,20 +78,17 @@ jobs:
           $allowedVivoxDll = [System.IO.Path]::GetFullPath(
             (Join-Path $env:GITHUB_WORKSPACE "resources\patches\vivoxsdk_x64_v5.dll")
           )
-          $allowedVivoxProxy = [System.IO.Path]::GetFullPath(
-            (Join-Path $env:GITHUB_WORKSPACE "resources\patches\vivoxsdk_x64.dll")
-          )
           # Open-source proxy rebuilt deterministically from native/gameplaypatch
           # and re-verified together with its sidecar before packaging.
           $allowedGameplayDll = [System.IO.Path]::GetFullPath(
             (Join-Path $env:GITHUB_WORKSPACE "resources\patches\dinput8.dll")
           )
           $unexpectedDlls = Get-ChildItem -LiteralPath $env:GITHUB_WORKSPACE -Recurse -File -Filter "*.dll" |
-            Where-Object { @($allowedDll, $allowedVivoxDll, $allowedVivoxProxy, $allowedGameplayDll) -notcontains $_.FullName } |
+            Where-Object { @($allowedDll, $allowedVivoxDll, $allowedGameplayDll) -notcontains $_.FullName } |
             Select-Object -ExpandProperty FullName
           if ($unexpectedDlls) {
             $unexpectedDlls | ForEach-Object { Write-Error "DLL inattendu dans le dépôt : $_" }
-            throw "Seuls les artefacts natifs explicitement autorisés peuvent être versionnés."
+            throw "Seuls les artefacts open source recompilables (shim, proxy sprint) peuvent être versionnés."
           }
 
           $gameplayHash = (Get-FileHash -LiteralPath $allowedGameplayDll -Algorithm SHA256).Hash
@@ -199,27 +196,36 @@ jobs:
             }
           }
 
-      - name: Vérifier le proxy Vivox fourni et les sources de référence
+      - name: Compiler le proxy Vivox open source
         shell: pwsh
         run: |
           npm run build:vivox
-          if ($LASTEXITCODE -ne 0) { throw "Vivox release input validation failed." }
-          # Source reproducibility is checked separately; it is not a claim
-          # that these reference sources produce the supplied release binary.
-          npm run build:vivox:source
-          if ($LASTEXITCODE -ne 0) { throw "Reference Vivox build failed." }
-          $reference = Join-Path $env:GITHUB_WORKSPACE "native\vivoxproxy\dist\vivoxsdk_x64.dll"
-          $hash = (Get-FileHash -LiteralPath $reference -Algorithm SHA256).Hash
+          $bundled = Join-Path $env:GITHUB_WORKSPACE "resources\patches\vivoxsdk_x64.dll"
+          if (-not (Test-Path -LiteralPath $bundled -PathType Leaf)) {
+            throw "Le build du proxy Vivox n'a produit aucune DLL."
+          }
+          $hash = (Get-FileHash -LiteralPath $bundled -Algorithm SHA256).Hash
+
           $alternateProxy = Join-Path $env:GITHUB_WORKSPACE "native\vivoxproxy\dist\alternate-path\vivoxsdk_x64.dll"
           & powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/build-v5-compat.ps1 -OutputPath $alternateProxy
-          if ($LASTEXITCODE -ne 0) { throw "Second reference Vivox build failed." }
-          $alternateHash = (Get-FileHash -LiteralPath $alternateProxy -Algorithm SHA256).Hash
-          if ($hash -ne $alternateHash -or $hash -ne "766A7C84B10B0C9F2A6F3EDB3C58AB8C8E2FFB6B358C0CEF52966DB82EB6957A") {
-            throw "The reference Vivox source build changed: $hash / $alternateHash"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Le second build du proxy Vivox a échoué."
           }
-          # Prove neither source build overwrote the release input or sidecar.
-          npm run verify:vivox-proxy
-          if ($LASTEXITCODE -ne 0) { throw "Supplied Vivox release input changed." }
+          $alternateHash = (Get-FileHash -LiteralPath $alternateProxy -Algorithm SHA256).Hash
+          if ($hash -ne $alternateHash) {
+            throw "Le proxy Vivox+crouch n'est pas reproductible : $hash != $alternateHash"
+          }
+
+          Write-Host "Proxy Vivox compilé depuis les sources publiques : $hash"
+          if ($hash -ne "766A7C84B10B0C9F2A6F3EDB3C58AB8C8E2FFB6B358C0CEF52966DB82EB6957A") {
+            throw "Unexpected Vivox proxy SHA-256: $hash"
+          }
+          # Le sidecar alimente l'override d'attestation : s'il diverge du DLL,
+          # chaque joueur honnête serait signalé en écart sur ce fichier.
+          $sidecar = ((Get-Content -LiteralPath "$bundled.sha256" -Raw) -split "\s+")[0]
+          if ($sidecar -ne $hash.ToLowerInvariant()) {
+            throw "Le sidecar vivoxsdk_x64.dll.sha256 ne correspond pas au DLL : $sidecar"
+          }
 
       - name: Compiler et vérifier le proxy sprint shotgun
         shell: pwsh

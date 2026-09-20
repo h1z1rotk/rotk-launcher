@@ -31,8 +31,7 @@
     "test:native:voice-rank": "powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/test-voice-rank.ps1",
     "test:native:voice-volume": "powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/test-voice-volume.ps1",
     "test:native:crouch": "powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/test-crouch-state-cache.ps1",
-    "build:vivox": "npm run verify:vivox-proxy && npm run test:native:duo-voice && npm run test:native:crouch && npm run test:native:voice-rank && npm run test:native:voice-volume",
-    "build:vivox:source": "powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/build-v5-compat.ps1 -OutputPath native/vivoxproxy/dist/vivoxsdk_x64.dll",
+    "build:vivox": "npm run test:native:duo-voice && npm run test:native:crouch && npm run test:native:voice-rank && powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/build-v5-compat.ps1 -OutputPath resources/patches/vivoxsdk_x64.dll && npm run test:native:voice-volume",
     "test:native:gameplay": "npm run build:gameplay-patch:test && npm run test:native:dinput8 && npm run verify:gameplay-patch",
     "test:native:dinput8": "powershell -NoProfile -ExecutionPolicy Bypass -File native/gameplaypatch/test-dinput8-proxy.ps1 -DllPath native/gameplaypatch/dist/dinput8.dll",
     "build:gameplay-patch:test": "powershell -NoProfile -ExecutionPolicy Bypass -File native/gameplaypatch/build-gameplay-patch.ps1 -OutputPath native/gameplaypatch/dist/dinput8.dll",
@@ -44,7 +43,6 @@
     "test:deathcomm": "dotnet run --project native/RotkDeathcomm.Tests -c Release",
     "verify:gameplay-patch": "node scripts/verify-gameplay-patch.mjs",
     "verify:vivox-runtime": "node scripts/verify-vivox-runtime.mjs",
-    "verify:vivox-proxy": "node scripts/verify-vivox-proxy.mjs",
     "build:diagnostics": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-diagnostics.ps1",
     "test:native:diagnostics": "node --test native/diagnostics/tests/integration.mjs",
     "verify:presentmon": "node scripts/verify-presentmon.mjs",
@@ -141,7 +139,7 @@
       "requestedExecutionLevel": "asInvoker",
       "signExts": [
         "steam_api64.dll",
-        "!vivoxsdk_x64.dll",
+        "vivoxsdk_x64.dll",
         "!PresentMon.exe"
       ],
       "signtoolOptions": {

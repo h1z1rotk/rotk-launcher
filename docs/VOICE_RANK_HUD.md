@@ -42,8 +42,7 @@ and an unranked player. The owner confirmed the rendered result. This validates
 the badge layout, not a real two-player microphone session or the full native
 voice path; the fixture overrides the UI rows and is not shipped.
 
-The release DLL is pinned in `resources/patches/vivoxsdk_x64.dll` (see
-[Vivox release input provenance](VIVOX_RELEASE_20260920.md)), with the
+The rebuilt DLL is staged in `resources/patches/vivoxsdk_x64.dll`, with the
 matching hash in `electron/services/vivox-client.ts` and the checksum file.
 It is not deployed to an installed game. Publish together with the server
 change, refresh the allowed proxy hash in the release attestation, then check
