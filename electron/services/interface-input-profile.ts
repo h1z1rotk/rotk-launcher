@@ -14,7 +14,7 @@ interface Element {
 }
 
 // Keep offsets and original bytes: the client owns the rest of this document.
-function elements(source: string, tag: string): Element[] {
+export function elements(source: string, tag: string): Element[] {
   const pattern = new RegExp(
     `<!--[\\s\\S]*?-->|<${tag}\\b(?:[^>"']|"[^"]*"|'[^']*')*>`, "g",
   );
@@ -37,7 +37,7 @@ function elements(source: string, tag: string): Element[] {
   return result;
 }
 
-function attribute(opening: string, name: string): string | undefined {
+export function attribute(opening: string, name: string): string | undefined {
   return new RegExp(`\\s${name}\\s*=\\s*(["'])(.*?)\\1`).exec(opening)?.[2];
 }
 
@@ -59,7 +59,7 @@ function normalizedTrigger(trigger: string): string {
   return trigger.toLowerCase().replace(/\b(shift|control|alt)_(left|right)\b/g, "$1");
 }
 
-function replaceBody(element: Element, body: string): string {
+export function replaceBody(element: Element, body: string): string {
   if (/\/\s*>$/.test(element.opening)) {
     return element.opening.replace(/\/\s*>$/, ">") + body + "</ActionSet>";
   }

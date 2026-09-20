@@ -21,6 +21,7 @@ import {
 } from "./gameplay-patch.js";
 import { deployVivoxCompatibility } from "./vivox-client.js";
 import { prepareInterfaceInputProfile } from "./interface-input-profile.js";
+import { prepareWeaponStanceProfile, WEAPON_STANCE_ENABLED } from "./weapon-stance-profile.js";
 import { startDeathcommClient } from "./deathcomm-client.js";
 
 const GAME_STARTUP_STABILITY_MS = 3_000;
@@ -189,6 +190,8 @@ async function prepareClient(
   // concurrent drift cannot ride into the process.
   await assertGameplayPatchState(root, clientPatchMode);
 
+  await prepareWeaponStanceProfile(root,
+    join(request.logsRoot, request.config.installation!.installId, "input-profile"), WEAPON_STANCE_ENABLED);
   await prepareInterfaceInputProfile(
     root,
     join(request.logsRoot, request.config.installation!.installId, "input-profile"),

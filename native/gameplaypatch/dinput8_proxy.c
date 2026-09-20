@@ -639,6 +639,8 @@ static BOOL install_patch_pair(BYTE *image_base) {
     return TRUE;
 }
 
+#include "weapon_stance.h"
+
 static DWORD WINAPI watchdog_worker(LPVOID parameter) {
     (void)parameter;
     for (;;) {
@@ -646,6 +648,7 @@ static DWORD WINAPI watchdog_worker(LPVOID parameter) {
         if (marker_enabled()) {
             continue;
         }
+        InterlockedExchange(&stance_enabled, 0);
         if (restore_patch_pair(g_image_base)) {
             patch_log(
                 "ROTK shotgun sprint: marker removed; stock bytes restored.\n");
@@ -702,6 +705,7 @@ static DWORD WINAPI patch_worker(LPVOID parameter) {
         patch_log(
             "ROTK shotgun sprint: v3 patch installed "
             "(0x1046F98:8f>82, 0x1046FE5:74>eb).\n");
+        stance_install(image_base);
         start_watchdog(image_base);
     } else {
         patch_log(

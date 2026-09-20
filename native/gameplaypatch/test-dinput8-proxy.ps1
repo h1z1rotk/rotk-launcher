@@ -19,13 +19,14 @@ $testRoot = Join-Path $root "dist\tests"
 $smokeExe = Join-Path $testRoot "dinput8_proxy_smoke.exe"
 $matrixExe = Join-Path $testRoot "protection_matrix_test.exe"
 $markerExe = Join-Path $testRoot "marker_parse_test.exe"
+$stanceExe = Join-Path $testRoot "weapon_stance_test.exe"
 
 if (-not (Test-Path -LiteralPath $proxy -PathType Leaf)) {
     throw "Shotgun sprint proxy not found: $proxy"
 }
 
-$expectedHash = "36FBA2037B0C9B1829E7C7E8BBEDBCF5A962F495DE4E8C63880B785745DCAC3A"
-$expectedBytes = 25088
+$expectedHash = "6CA1A0B1C28F8D11482A416E9F9D8B6330DB253A78ED79B9301EC31198CE7845"
+$expectedBytes = 33792
 function Get-Sha256([string]$Path) {
     $stream = [System.IO.File]::OpenRead($Path)
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
@@ -113,9 +114,7 @@ $ascii = [System.Text.Encoding]::ASCII.GetString($binary)
 foreach ($forbiddenImport in @(
     "AddVectoredExceptionHandler",
     "SetUnhandledExceptionFilter",
-    "MiniDumpWriteDump",
-    "GetAsyncKeyState",
-    "VirtualAlloc"
+    "MiniDumpWriteDump"
 )) {
     if ($ascii.Contains($forbiddenImport)) {
         throw "Forbidden binary import/string remains: $forbiddenImport"
@@ -178,6 +177,16 @@ if ($LASTEXITCODE -ne 0) {
     throw "Marker-parse test failed."
 }
 
-Write-Host "Shotgun sprint DirectInput proxy tests passed."
+# Stance uses a bounded RX trampoline and mouse state reads; neither installs
+# an exception handler. Verify the native setter thunk and action lookup too.
+& $zig.Source @(
+    "cc", "-target", "x86_64-windows-gnu", "-O2", "-Wall", "-Wextra", "-Werror",
+    "-o", $stanceExe, (Join-Path $root "tests\weapon_stance_test.c"), "-luser32"
+)
+if ($LASTEXITCODE -ne 0) { throw "Weapon stance test compilation failed." }
+& $stanceExe
+if ($LASTEXITCODE -ne 0) { throw "Weapon stance test failed." }
+
+Write-Host "Shotgun sprint and weapon stance DirectInput proxy tests passed."
 Write-Host "  Size $actualBytes bytes"
 Write-Host "  SHA256 $actualHash"
