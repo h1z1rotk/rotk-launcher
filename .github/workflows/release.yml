@@ -128,7 +128,7 @@ jobs:
           }
           npm run prepare:gameplay-patch
           $gameplayHash = (Get-FileHash -LiteralPath "resources\patches\dinput8.dll" -Algorithm SHA256).Hash
-          if ($gameplayHash -ne "6CA1A0B1C28F8D11482A416E9F9D8B6330DB253A78ED79B9301EC31198CE7845") {
+          if ($gameplayHash -ne "36FBA2037B0C9B1829E7C7E8BBEDBCF5A962F495DE4E8C63880B785745DCAC3A") {
             throw "Unexpected shotgun sprint proxy SHA-256: $gameplayHash"
           }
           # Les sidecars alimentent les overrides d'attestation embarqués :

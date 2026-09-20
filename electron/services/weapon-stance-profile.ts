@@ -6,7 +6,7 @@ import { elements, attribute, replaceBody } from "./interface-input-profile.js";
 export interface StanceProfileState { added: string[]; removedNetworkN: boolean; }
 const defaults = { ToggleWeaponStance: "V", ROTKConsole: "N" };
 /** Pinned per release; the prepared rollback build sets this to false. */
-export const WEAPON_STANCE_ENABLED = true;
+export const WEAPON_STANCE_ENABLED = false;
 
 /** Preserve every existing binding and leave ToggleDebugConsole unmodified. */
 export function migrateStanceProfile(source: string, enabled: boolean,

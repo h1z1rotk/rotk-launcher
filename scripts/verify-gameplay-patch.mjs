@@ -3,8 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const expectedHash =
-  "6ca1a0b1c28f8d11482a416e9f9d8b6330db253a78ed79b9301ec31198ce7845";
-const expectedBytes = 33_792;
+  "36fba2037b0c9b1829e7c7e8bbedbcf5a962f495de4e8c63880b785745dcac3a";
+const expectedBytes = 25_088;
 const builtPath = resolve(
   process.argv[2] ?? "native/gameplaypatch/dist/dinput8.dll",
 );
@@ -73,6 +73,8 @@ for (const forbidden of [
   "AddVectoredExceptionHandler",
   "SetUnhandledExceptionFilter",
   "MiniDumpWriteDump",
+  "GetAsyncKeyState",
+  "VirtualAlloc",
 ]) {
   if (built.indexOf(Buffer.from(forbidden + "\0", "ascii")) >= 0) {
     throw new Error("Gameplay patch unexpectedly imports " + forbidden + ".");
