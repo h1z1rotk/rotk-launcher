@@ -122,8 +122,9 @@ jobs:
             throw "Bundled diagnostic helper does not match its public source."
           }
           npm run build:vivox
+          if ($LASTEXITCODE -ne 0) { throw "Vivox release input validation failed." }
           $proxyHash = (Get-FileHash -LiteralPath "resources\patches\vivoxsdk_x64.dll" -Algorithm SHA256).Hash
-          if ($proxyHash -ne "766A7C84B10B0C9F2A6F3EDB3C58AB8C8E2FFB6B358C0CEF52966DB82EB6957A") {
+          if ($proxyHash -ne "7A6DA1DD688FBC62E880535315C7C47F1F36441C1E8A3992D8BF2F9C54A13F55") {
             throw "Unexpected Vivox proxy SHA-256: $proxyHash"
           }
           npm run prepare:gameplay-patch
@@ -177,7 +178,7 @@ jobs:
             Where-Object { $_.Name -eq "vivoxsdk_x64.dll" } |
             Select-Object -First 1
           $proxyHash = (Get-FileHash -LiteralPath $vivoxProxy.FullName -Algorithm SHA256).Hash
-          if ($proxyHash -ne "766A7C84B10B0C9F2A6F3EDB3C58AB8C8E2FFB6B358C0CEF52966DB82EB6957A") {
+          if ($proxyHash -ne "7A6DA1DD688FBC62E880535315C7C47F1F36441C1E8A3992D8BF2F9C54A13F55") {
             throw "Unexpected packaged Vivox proxy SHA-256: $proxyHash"
           }
 
@@ -202,7 +203,7 @@ jobs:
           }
 
           $publisher = $null
-          $projectTargets = $targets | Where-Object { $_.Name -ne "vivoxsdk_x64_v5.dll" }
+          $projectTargets = $targets | Where-Object { $_.Name -notin @("vivoxsdk_x64_v5.dll", "vivoxsdk_x64.dll") }
           foreach ($target in $projectTargets) {
             $signature = Get-AuthenticodeSignature -LiteralPath $target.FullName
             if ($signature.Status -ne "Valid" -or -not $signature.SignerCertificate) {
@@ -252,7 +253,7 @@ jobs:
             release/latest.yml
             release/SHA256SUMS.txt
 
-      - name: Create a draft GitHub release
+      - name: Create or refresh the unpublished draft release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         env:
@@ -274,8 +275,17 @@ jobs:
           $releaseFiles += (Resolve-Path -LiteralPath release\SHA256SUMS.txt).Path
           # latest.yml lets the in-app updater resolve the newest published version.
           $releaseFiles += (Resolve-Path -LiteralPath release\latest.yml).Path
-          gh release create $env:GITHUB_REF_NAME @releaseFiles `
-            --verify-tag `
-            --generate-notes `
-            --draft `
-            --title "ROTK Launcher $env:GITHUB_REF_NAME"
+          $existing = gh release view $env:GITHUB_REF_NAME --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (-not ($existing | ConvertFrom-Json).isDraft) {
+              throw "Refusing to replace artifacts of an already published release."
+            }
+            gh release upload $env:GITHUB_REF_NAME @releaseFiles --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME @releaseFiles `
+              --verify-tag `
+              --generate-notes `
+              --draft `
+              --title "ROTK Launcher $env:GITHUB_REF_NAME"
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Draft release artifact upload failed." }

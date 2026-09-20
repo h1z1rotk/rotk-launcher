@@ -20,7 +20,6 @@ native/vivoxproxy/.zig-cache/
 native/vivoxproxy/.zig-tmp*/
 native/vivoxproxy/dist/
 resources/patches/*.pdb
-resources/patches/vivoxsdk_x64.dll
 resources/patches/vivoxsdk_x64_proxy.lib
 native/RotkDeathcomm/bin/
 native/RotkDeathcomm/obj/

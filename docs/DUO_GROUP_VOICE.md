@@ -10,14 +10,14 @@ No key binding changes: the game selects Proximity or Group through its existing
 separate push-to-talk controls. Ship alongside the server Duo Group Chat change;
 older servers authorize only proximity. No live launcher release is included.
 
-`npm run test:native:duo-voice` compiles the shipping C implementation and checks
+`npm run test:native:duo-voice` compiles the reference C implementation and checks
 the two join layouts, the 63-byte boundary, malformed input and header injection.
 The resulting `native/vivoxproxy/dist/tests/duo_group_voice_test.exe` can be supplied
 as `DUO_VOICE_NATIVE_PROBE` to the server's `prove:duo-group-voice` proof. That
 exercises real WinHTTP requests and token injection for both rooms/ABIs.
 
-Run `npm run prepare:vivox` to rebuild the distributable DLL and run the existing
-native checks. Two-client in-game audio validation remains a release check.
+Run `npm run prepare:vivox` to verify the pinned distributable DLL and run the
+existing native checks. See [release input provenance](VIVOX_RELEASE_20260920.md). Two-client in-game audio validation remains a release check.
 
 Vivox 5 session-added events leave the legacy URI field empty. The proxy restores
 it from each event's own URI-based session handle, which was set on its authorized
