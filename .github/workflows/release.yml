@@ -258,6 +258,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The emergency recovery installer may already have been staged in a
+          # reviewed draft before its branch is merged. Never overwrite those
+          # artifacts (or a published recovery) when the tag workflow catches up.
+          gh release view $env:GITHUB_REF_NAME --json isDraft > $null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Recovery release already exists; retaining its verified artifacts."
+            exit 0
+          }
           $releaseFiles = @(
             Get-ChildItem -LiteralPath release -File |
               Where-Object { $_.Name -match '\.(exe|blockmap)$' } |
