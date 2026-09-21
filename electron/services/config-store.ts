@@ -7,6 +7,10 @@ import {
   type PlayerRole,
   type ServerId,
 } from "../../shared/launch-profile.js";
+import {
+  isGithubProxyConfig,
+  type GithubProxyConfig,
+} from "../../shared/contracts.js";
 
 export interface InstalledClientConfig {
   installId: string;
@@ -36,6 +40,8 @@ export interface LauncherConfig {
   serverId?: ServerId;
   /** Launch as the player account or the admin/moderator one. Defaults to player. */
   role?: PlayerRole;
+  /** GitHub proxy configuration for asset downloads. Defaults to direct connection. */
+  githubProxy?: GithubProxyConfig;
 }
 
 interface StoredConfigCandidate {
@@ -71,7 +77,8 @@ function isValidConfig(value: unknown): value is LauncherConfig {
     (candidate.debugSessionEnabled === undefined || typeof candidate.debugSessionEnabled === "boolean") &&
     (candidate.diagnosticUploadConsent === undefined || candidate.diagnosticUploadConsent === 1) &&
     (candidate.serverId === undefined || isServerId(candidate.serverId)) &&
-    (candidate.role === undefined || isPlayerRole(candidate.role))
+    (candidate.role === undefined || isPlayerRole(candidate.role)) &&
+    (candidate.githubProxy === undefined || isGithubProxyConfig(candidate.githubProxy))
   );
 }
 
@@ -84,6 +91,7 @@ function withoutLegacyIdentity(value: LauncherConfig): LauncherConfig {
   if (value.diagnosticUploadConsent === 1) next.diagnosticUploadConsent = 1;
   if (value.serverId !== undefined) next.serverId = value.serverId;
   if (value.role !== undefined) next.role = value.role;
+  if (value.githubProxy !== undefined) next.githubProxy = value.githubProxy;
   return next;
 }
 
@@ -189,6 +197,13 @@ export class ConfigStore {
   async setAssetSyncEnabled(assetSyncEnabled: boolean): Promise<LauncherConfig> {
     const current = await this.load();
     const next: LauncherConfig = { ...current, assetSyncEnabled };
+    await this.save(next);
+    return next;
+  }
+
+  async setGithubProxy(githubProxy: GithubProxyConfig): Promise<LauncherConfig> {
+    const current = await this.load();
+    const next: LauncherConfig = { ...current, githubProxy };
     await this.save(next);
     return next;
   }

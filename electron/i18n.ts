@@ -43,6 +43,9 @@ export const MAIN_COPY = {
       busy: "An asset synchronization is already in progress.",
       disabled: "Asset synchronization is disabled in the launcher settings.",
     },
+    proxy: {
+      invalid: "The GitHub proxy configuration is invalid.",
+    },
   },
   fr: {
     unexpectedError: "Une erreur inattendue est survenue.",
@@ -85,6 +88,9 @@ export const MAIN_COPY = {
     assets: {
       busy: "Une synchronisation des assets est déjà en cours.",
       disabled: "La synchronisation des assets est désactivée dans les réglages du launcher.",
+    },
+    proxy: {
+      invalid: "La configuration du proxy GitHub est invalide.",
     },
   },
 } as const;

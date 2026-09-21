@@ -172,6 +172,13 @@ export interface Copy {
     restore: string;
     autoSync: string;
   };
+  proxy: {
+    title: string;
+    description: string;
+    options: Record<"none" | "jsdelivr" | "ghproxy" | "custom", { label: string; description: string }>;
+    customUrl: string;
+    customHint: string;
+  };
 }
 
 const COPY: Record<AppLocale, Copy> = {
@@ -367,6 +374,18 @@ const COPY: Record<AppLocale, Copy> = {
       restore: "RESTORE VANILLA CLIENT",
       autoSync: "Update the custom assets automatically",
     },
+    proxy: {
+      title: "GITHUB PROXY",
+      description: "Route GitHub downloads through a proxy service to improve connection reliability in regions with restricted access.",
+      options: {
+        none: { label: "Direct connection", description: "Connect to GitHub directly without a proxy." },
+        jsdelivr: { label: "jsDelivr CDN", description: "Use the jsDelivr CDN to cache and serve GitHub content." },
+        ghproxy: { label: "ghproxy", description: "Use ghproxy.net as a GitHub download proxy." },
+        custom: { label: "Custom proxy", description: "Enter your own GitHub proxy URL." },
+      },
+      customUrl: "Proxy URL",
+      customHint: "The proxy will be prepended to GitHub URLs. Example: https://my-proxy.example.com",
+    },
   },
   fr: {
     diagnostics: DIAGNOSTICS_COPY.fr,
@@ -559,6 +578,18 @@ const COPY: Record<AppLocale, Copy> = {
       verify: "VÉRIFIER LES FICHIERS",
       restore: "RESTAURER LE CLIENT VANILLA",
       autoSync: "Mettre à jour les assets personnalisés automatiquement",
+    },
+    proxy: {
+      title: "PROXY GITHUB",
+      description: "Acheminer les téléchargements GitHub via un service proxy pour améliorer la fiabilité de connexion dans les régions à accès restreint.",
+      options: {
+        none: { label: "Connexion directe", description: "Se connecter à GitHub directement sans proxy." },
+        jsdelivr: { label: "CDN jsDelivr", description: "Utiliser le CDN jsDelivr pour mettre en cache et servir le contenu GitHub." },
+        ghproxy: { label: "ghproxy", description: "Utiliser ghproxy.net comme proxy de téléchargement GitHub." },
+        custom: { label: "Proxy personnalisé", description: "Saisir votre propre URL de proxy GitHub." },
+      },
+      customUrl: "URL du proxy",
+      customHint: "Le proxy sera préfixé aux URL GitHub. Exemple : https://mon-proxy.exemple.com",
     },
   },
 };

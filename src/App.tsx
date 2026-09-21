@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LauncherSnapshot, OperationResult } from "../shared/contracts";
+import type { GithubProxyConfig, LauncherSnapshot, OperationResult } from "../shared/contracts";
 import { GlobalActivityCenter } from "./components/GlobalActivityCenter";
 import { InstallPanel } from "./components/InstallPanel";
 import { LauncherFooter } from "./components/LauncherFooter";
@@ -79,6 +79,12 @@ export default function App() {
       setBusy(false);
     }
   }, [copy.app.operationFailed]);
+
+  const setGithubProxy = useCallback(
+    (config: GithubProxyConfig) =>
+      perform(() => window.rotk.setGithubProxy(config)),
+    [perform],
+  );
 
   const toggleDebugSession = useCallback(async (enabled: boolean) => {
     if (debugSessionInFlight.current || debugSessionLocked) return;
@@ -168,6 +174,7 @@ export default function App() {
         onVerifyAssets={() => void perform(() => window.rotk.verifyAssets())}
         onRestoreAssets={() => void perform(() => window.rotk.restoreVanillaAssets())}
         onToggleAssetSync={(enabled) => void perform(() => window.rotk.setAssetSyncEnabled(enabled))}
+        onSetGithubProxy={(config) => void setGithubProxy(config)}
         debugSessionBusy={debugSessionBusy}
         debugSessionFailed={debugSessionFailed}
         debugSessionLocked={debugSessionLocked}

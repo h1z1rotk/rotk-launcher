@@ -23,6 +23,8 @@ import {
 } from "../constants.js";
 import { assertSafeGeneratedStagingPath } from "./path-policy.js";
 import { extractZipEntry, readZipDirectory } from "./zip-archive.js";
+import type { GithubProxyConfig } from "../../shared/contracts.js";
+import { rewriteGithubUrl, allowedFirstHopHosts } from "./github-proxy.js";
 
 /**
  * Downloads the custom ROTK asset packs published on the dedicated GitHub
@@ -128,6 +130,7 @@ export interface AssetSyncServiceOptions {
   releaseApiUrl?: string;
   discoverReleaseAssets?: boolean;
   fetchImpl?: typeof fetch;
+  githubProxy?: GithubProxyConfig;
   onProgress?(progress: AssetSyncProgress): void;
 }
 
@@ -435,6 +438,7 @@ export class AssetSyncService {
   private readonly releaseApiUrl: string;
   private readonly discoverReleaseAssets: boolean;
   private readonly fetchImpl: typeof fetch;
+  private githubProxy: GithubProxyConfig;
   private readonly onProgress: (progress: AssetSyncProgress) => void;
   private lastProgressAt = 0;
 
@@ -446,7 +450,13 @@ export class AssetSyncService {
     this.releaseApiUrl = options.releaseApiUrl ?? ASSET_RELEASE_API_URL;
     this.discoverReleaseAssets = options.discoverReleaseAssets ?? true;
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.githubProxy = options.githubProxy ?? { type: "none" };
     this.onProgress = options.onProgress ?? (() => undefined);
+  }
+
+  /** Update the GitHub proxy at runtime without recreating the service. */
+  setGithubProxy(proxy: GithubProxyConfig): void {
+    this.githubProxy = proxy;
   }
 
   async readState(): Promise<AssetSyncState | null> {
@@ -611,14 +621,16 @@ export class AssetSyncService {
     const abortUpstream = (): void => controller.abort(signal?.reason as Error | undefined);
     signal?.addEventListener("abort", abortUpstream, { once: true });
     try {
-      const response = await this.fetchFollowingRedirects(this.feedUrl, controller.signal);
+      const effectiveFeedUrl = rewriteGithubUrl(this.feedUrl, this.githubProxy);
+      const response = await this.fetchFollowingRedirects(effectiveFeedUrl, controller.signal);
       const body = await response.text();
       if (Buffer.byteLength(body, "utf8") > MAX_FEED_BYTES) throw new Error("Feed too large");
       const manifest = parseAssetManifest(JSON.parse(stripByteOrderMark(body)));
       if (!this.discoverReleaseAssets) return manifest;
 
+      const effectiveReleaseApiUrl = rewriteGithubUrl(this.releaseApiUrl, this.githubProxy);
       const releaseResponse = await this.fetchFollowingRedirects(
-        this.releaseApiUrl,
+        effectiveReleaseApiUrl,
         controller.signal,
         RELEASE_API_HOSTS,
       );
@@ -641,9 +653,11 @@ export class AssetSyncService {
     signal?: AbortSignal,
     firstHopHosts: ReadonlySet<string> = ASSET_URL_HOSTS,
   ): Promise<Response> {
+    const effectiveFirstHop = allowedFirstHopHosts(firstHopHosts, this.githubProxy);
+    const effectiveRedirect = allowedFirstHopHosts(ASSET_REDIRECT_HOSTS, this.githubProxy);
     let url = new URL(rawUrl);
     for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
-      const allowedHosts = hop === 0 ? firstHopHosts : ASSET_REDIRECT_HOSTS;
+      const allowedHosts = hop === 0 ? effectiveFirstHop : effectiveRedirect;
       if (url.protocol !== "https:" || !allowedHosts.has(url.hostname)) {
         throw new Error(`Hôte de téléchargement d’assets non autorisé : ${url.hostname}.`);
       }
@@ -680,7 +694,8 @@ export class AssetSyncService {
     }
     await rm(cachePath, { force: true });
 
-    const response = await this.fetchFollowingRedirects(asset.url, signal);
+    const effectiveUrl = rewriteGithubUrl(asset.url, this.githubProxy);
+    const response = await this.fetchFollowingRedirects(effectiveUrl, signal);
     if (!response.body) throw new Error(`Téléchargement d’assets refusé (HTTP ${response.status}).`);
     const temporaryPath = `${cachePath}.${randomUUID()}.tmp`;
     const hash = createHash("sha256");

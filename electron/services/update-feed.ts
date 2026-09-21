@@ -103,10 +103,12 @@ function isCachedUpdate(value: unknown): value is PublishedUpdate {
 
 export class UpdateFeedService {
   private readonly cachePath: string;
+  private readonly fetchImpl: typeof fetch;
 
-  constructor(userDataDirectory: string) {
+  constructor(userDataDirectory: string, fetchImpl?: typeof fetch) {
     // v2 deliberately ignores the old Firestore-backed cache.
     this.cachePath = join(userDataDirectory, "updates-cache.v2.json");
+    this.fetchImpl = fetchImpl ?? fetch;
   }
 
   async getLatest(): Promise<PublishedUpdate[]> {
@@ -115,7 +117,7 @@ export class UpdateFeedService {
       const timeout = setTimeout(() => controller.abort(), 7_000);
       let response: Response;
       try {
-        response = await fetch(UPDATE_FEED_URL, {
+        response = await this.fetchImpl(UPDATE_FEED_URL, {
           method: "GET",
           headers: { accept: "application/json" },
           signal: controller.signal,

@@ -133,6 +133,42 @@ export interface IntegrityCheckSummary {
   totalBytes: number;
 }
 
+export type GithubProxyType = "none" | "jsdelivr" | "ghproxy" | "custom";
+
+export interface GithubProxyConfig {
+  type: GithubProxyType;
+  /** Required when type is "custom"; ignored otherwise. Must be https:// */
+  url?: string;
+}
+
+const GITHUB_PROXY_TYPES: readonly string[] = ["none", "jsdelivr", "ghproxy", "custom"];
+
+export function isGithubProxyType(value: unknown): value is GithubProxyType {
+  return typeof value === "string" && GITHUB_PROXY_TYPES.includes(value);
+}
+
+export function isGithubProxyConfig(value: unknown): value is GithubProxyConfig {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<GithubProxyConfig>;
+  if (!isGithubProxyType(candidate.type)) return false;
+  if (candidate.type === "custom") {
+    if (typeof candidate.url !== "string" || candidate.url.length === 0) return false;
+    try {
+      const parsed = new URL(candidate.url);
+      if (parsed.protocol !== "https:") return false;
+      if (parsed.username || parsed.password) return false;
+      if (!parsed.hostname) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function normalizeGithubProxyConfig(value: unknown): GithubProxyConfig {
+  return isGithubProxyConfig(value) ? value : { type: "none" };
+}
+
 export interface LauncherSnapshot {
   debugSession?: DebugSessionSummary;
   appVersion: string;
@@ -152,6 +188,8 @@ export interface LauncherSnapshot {
    *  until a newer version is installed. */
   updateRequired: boolean;
   canPlay: boolean;
+  /** Current GitHub proxy configuration for asset downloads. */
+  githubProxy: GithubProxyConfig;
 }
 
 export interface DebugSessionSummary {
@@ -198,6 +236,7 @@ export interface RotkLauncherApi {
   verifyAssets(): Promise<OperationResult>;
   restoreVanillaAssets(): Promise<OperationResult>;
   setAssetSyncEnabled(enabled: boolean): Promise<OperationResult>;
+  setGithubProxy(config: GithubProxyConfig): Promise<OperationResult<LauncherSnapshot>>;
   minimizeWindow(): Promise<void>;
   closeWindow(): Promise<void>;
   onSnapshot(listener: (snapshot: LauncherSnapshot) => void): () => void;
@@ -231,6 +270,7 @@ export const IPC_CHANNELS = {
   verifyAssets: "asset-sync:verify",
   restoreVanillaAssets: "asset-sync:restore",
   setAssetSyncEnabled: "asset-sync:set-enabled",
+  setGithubProxy: "launcher:set-github-proxy",
   minimizeWindow: "window:minimize",
   closeWindow: "window:close",
   snapshotChanged: "launcher:snapshot-changed",

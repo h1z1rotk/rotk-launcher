@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, FolderOpen, HardDrive, PackageCheck, ShieldCheck, X } from "lucide-react";
-import type { LauncherSnapshot } from "../../shared/contracts";
+import type { GithubProxyConfig, LauncherSnapshot } from "../../shared/contracts";
 import { useI18n } from "../i18n";
 import { LanguagePicker } from "./WindowChrome";
 
@@ -16,6 +16,7 @@ interface InstallPanelProps {
   onVerifyAssets(): void;
   onRestoreAssets(): void;
   onToggleAssetSync(enabled: boolean): void;
+  onSetGithubProxy(config: GithubProxyConfig): void;
   debugSessionBusy: boolean;
   debugSessionFailed: boolean;
   debugSessionLocked: boolean;
@@ -45,6 +46,7 @@ export function InstallPanel({
   onVerifyAssets,
   onRestoreAssets,
   onToggleAssetSync,
+  onSetGithubProxy,
   debugSessionBusy,
   debugSessionFailed,
   debugSessionLocked,
@@ -283,6 +285,56 @@ export function InstallPanel({
                 </label>
               </section>
             )}
+
+            <section className="proxy-settings" aria-labelledby="github-proxy-title">
+              <h3 id="github-proxy-title">{copy.proxy.title}</h3>
+              <p className="proxy-settings__description">{copy.proxy.description}</p>
+              <div className="proxy-settings__options">
+                {(["none", "jsdelivr", "ghproxy", "custom"] as const).map((type) => {
+                  const option = copy.proxy.options[type];
+                  const checked = snapshot.githubProxy.type === type;
+                  return (
+                    <label key={type} className={`proxy-settings__option${checked ? " is-selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="github-proxy"
+                        value={type}
+                        checked={checked}
+                        disabled={busy}
+                        onChange={() => {
+                          if (type === "custom") {
+                            onSetGithubProxy({ type: "custom", url: snapshot.githubProxy.url ?? "" });
+                          } else {
+                            onSetGithubProxy({ type });
+                          }
+                        }}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {snapshot.githubProxy.type === "custom" && (
+                <div className="proxy-settings__custom">
+                  <label>
+                    <span>{copy.proxy.customUrl}</span>
+                    <input
+                      type="url"
+                      value={snapshot.githubProxy.url ?? ""}
+                      placeholder="https://my-proxy.example.com"
+                      disabled={busy}
+                      onChange={(event) =>
+                        onSetGithubProxy({ type: "custom", url: event.target.value })
+                      }
+                    />
+                  </label>
+                  <small>{copy.proxy.customHint}</small>
+                </div>
+              )}
+            </section>
 
             <p className="install-panel__legal">
               {copy.install.legal}

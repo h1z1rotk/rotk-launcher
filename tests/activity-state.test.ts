@@ -64,6 +64,7 @@ function snapshot(overrides: Partial<LauncherSnapshot> = {}): LauncherSnapshot {
     gamePid: null,
     updateRequired: false,
     canPlay: true,
+    githubProxy: { type: "none" },
     ...overrides,
   };
 }

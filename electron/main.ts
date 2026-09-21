@@ -16,11 +16,14 @@ import {
 } from "electron";
 import {
   IPC_CHANNELS,
+  isGithubProxyConfig,
+  normalizeGithubProxyConfig,
   type AssetSyncProgress,
   type AssetSyncStatus,
   type AssetSyncSummary,
   type AssetSyncWarning,
   type ClientSourceKind,
+  type GithubProxyConfig,
   type LauncherPhase,
   type LauncherSnapshot,
   type OperationResult,
@@ -97,6 +100,12 @@ import {
 } from "./services/integrity-attestation.js";
 import { DiagnosticController } from "./services/diagnostic-controller.js";
 import { StartupLog } from "./services/startup-log.js";
+import {
+  detectSystemProxy,
+  applySystemProxyToSession,
+  createProxyFetch,
+  applyProxyEnvironmentVariables,
+} from "./services/system-proxy.js";
 import { createHash } from 'node:crypto';
 import { uploadDiagnostic } from "./services/diagnostic-upload.js";
 import { collectDiagnosticClientContext } from "./services/diagnostic-client-context.js";
@@ -195,6 +204,8 @@ let assetSyncProgress: AssetSyncProgress | null = null;
 let attestationProgress: AttestationProgress | null = null;
 let assetSyncPackVersion: string | null = null;
 let assetSyncLastAt: string | null = null;
+let githubProxy: GithubProxyConfig = { type: "none" };
+let proxyFetch: typeof fetch = fetch;
 
 function diagnosticCopy(): { failed: string; invalid: string; save: string; exists: string; settings: string } {
   return currentLocale === "fr" ? {
@@ -280,7 +291,7 @@ function isSelectionLocked(): boolean {
 async function refreshServerStatus(): Promise<void> {
   const samples = await Promise.all(runtimeConfigList().map(async (runtime) => [
     runtime.id,
-    await fetchServerStatus(runtime),
+    await fetchServerStatus(runtime, { fetchImpl: proxyFetch }),
   ] as const));
   serverStatus = Object.fromEntries(samples);
   await broadcastSnapshot();
@@ -416,6 +427,8 @@ async function attestInstallation(
       url: BASE_MANIFEST_URL,
       userDataDirectory,
       expectedBuildId: challenge.baseBuildId,
+      fetchImpl: proxyFetch,
+      githubProxy,
     });
     const assetState = await assetSync.readState().catch(() => null);
     const installedAssets = (assetState?.assets ?? []).flatMap((asset) =>
@@ -571,6 +584,7 @@ async function snapshot(): Promise<LauncherSnapshot> {
       && !debugSettingWrite && !diagnosticWorkInProgress()
       // A mandatory update blocks Play until a newer launcher is installed.
       && !updateRequired,
+    githubProxy,
   };
 }
 
@@ -1185,6 +1199,22 @@ function registerIpc(): void {
     }),
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.setGithubProxy,
+    trustedHandler(async (_event, proxyConfig: unknown): Promise<OperationResult<LauncherSnapshot>> => {
+      if (!isGithubProxyConfig(proxyConfig)) {
+        return { ok: false, error: MAIN_COPY[currentLocale].proxy.invalid };
+      }
+      if (assetSyncRunning) return { ok: false, error: MAIN_COPY[currentLocale].assets.busy };
+      await configStore.setGithubProxy(proxyConfig);
+      githubProxy = proxyConfig;
+      assetSync.setGithubProxy(proxyConfig);
+      lastErrorRaw = null;
+      await broadcastSnapshot();
+      return { ok: true, value: await snapshot() };
+    }),
+  );
+
   ipcMain.handle(IPC_CHANNELS.minimizeWindow, trustedHandler(async () => mainWindow?.minimize(), { waitForServices: false }));
   ipcMain.handle(IPC_CHANNELS.closeWindow, trustedHandler(async () => mainWindow?.close(), { waitForServices: false }));
 }
@@ -1296,7 +1326,6 @@ async function initialize(): Promise<void> {
   );
   playerKeys = await playerKeyStore.load();
   startupLog.mark("player-keys-loaded");
-  updateFeed = new UpdateFeedService(app.getPath("userData"));
   assetSync = new AssetSyncService({
     userDataDirectory: app.getPath("userData"),
     onProgress: (value) => {
@@ -1312,6 +1341,17 @@ async function initialize(): Promise<void> {
   assetSyncEnabled = config.assetSyncEnabled ?? true;
   selectedServerId = config.serverId ?? DEFAULT_SERVER_ID;
   selectedRole = config.role ?? DEFAULT_PLAYER_ROLE;
+
+  // Proxy configuration: detect system proxy and apply to all HTTP traffic.
+  githubProxy = normalizeGithubProxyConfig(config.githubProxy);
+  await applySystemProxyToSession();
+  const systemProxy = await detectSystemProxy();
+  applyProxyEnvironmentVariables(systemProxy.proxyUrl);
+  proxyFetch = createProxyFetch(systemProxy.proxyUrl);
+  assetSync.setGithubProxy(githubProxy);
+  updateFeed = new UpdateFeedService(app.getPath("userData"), proxyFetch);
+  startupLog.mark("proxy-configured",
+    `system=${systemProxy.proxyUrl ?? "direct"} github-proxy=${githubProxy.type}`);
   const assetState = await assetSync.readState().catch(() => null);
   assetSyncPackVersion = assetState?.packVersion ?? null;
   assetSyncLastAt = assetState?.syncedAt ?? null;

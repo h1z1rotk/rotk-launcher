@@ -18,6 +18,8 @@ import {
   verifyAttestationSignature,
   type ManifestFileEntry,
 } from "../../shared/attestation.js";
+import type { GithubProxyConfig } from "../../shared/contracts.js";
+import { rewriteGithubUrl, allowedFirstHopHosts } from "./github-proxy.js";
 
 /** Published beside the asset packs, in the same public repository. */
 export const BASE_MANIFEST_URL =
@@ -108,7 +110,7 @@ export function parseBaseManifest(value: unknown): BaseManifest {
   };
 }
 
-function validateManifestUrl(value: string): string {
+function validateManifestUrl(value: string, proxy?: GithubProxyConfig): string {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -116,7 +118,8 @@ function validateManifestUrl(value: string): string {
     throw manifestError("URL invalide");
   }
   if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw manifestError("URL invalide");
-  if (!MANIFEST_HOSTS.has(parsed.hostname)) throw manifestError(`hôte non autorisé (${parsed.hostname})`);
+  const effectiveHosts = allowedFirstHopHosts(MANIFEST_HOSTS, proxy ?? { type: "none" });
+  if (!effectiveHosts.has(parsed.hostname)) throw manifestError(`hôte non autorisé (${parsed.hostname})`);
   return parsed.href;
 }
 
@@ -125,6 +128,7 @@ export interface LoadBaseManifestOptions {
   userDataDirectory: string;
   expectedBuildId: string;
   fetchImpl?: typeof fetch;
+  githubProxy?: GithubProxyConfig;
   timeoutMs?: number;
 }
 
@@ -133,7 +137,9 @@ export interface LoadBaseManifestOptions {
  * and falling back to the cached copy (also re-verified) when offline.
  */
 export async function loadBaseManifest(options: LoadBaseManifestOptions): Promise<BaseManifest> {
-  const url = validateManifestUrl(options.url);
+  const proxy = options.githubProxy ?? { type: "none" };
+  const effectiveUrl = rewriteGithubUrl(options.url, proxy);
+  const url = validateManifestUrl(effectiveUrl, proxy);
   const cachePath = join(options.userDataDirectory, CACHE_FILE_NAME);
   const fetchImpl = options.fetchImpl ?? fetch;
   const controller = new AbortController();
