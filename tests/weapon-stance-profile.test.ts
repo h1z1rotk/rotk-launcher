@@ -42,6 +42,11 @@ describe("stance binding migration and rollback", () => {
     const next=migrateStanceProfile(custom,true);
     expect(next.text).toBe(custom); expect(next.state.added).toEqual([]);
   });
+  it("preserves the public console workaround across launcher updates", () => {
+    const repaired = source.replace('</ActionSet>', '<Action name="ToggleWeaponStance" version="1"><Trigger>V</Trigger></Action><Action name="ROTKConsole" version="1" /></ActionSet>');
+    const state = { added: ["ToggleWeaponStance", "ROTKConsole"], removedNetworkN: true };
+    expect(migrateStanceProfile(repaired, true, state)).toEqual({ text: repaired, state });
+  });
   it("rolls back only owned actions and restores N", () => {
     const installed=migrateStanceProfile(source,true);
     const restored=migrateStanceProfile(installed.text,false,installed.state);
