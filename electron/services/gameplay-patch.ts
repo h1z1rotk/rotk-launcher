@@ -6,7 +6,7 @@ import { SUPPORTED_CLIENT_BUILDS } from "./client-build.js";
 
 export const GAMEPLAY_PATCH_FILE_NAME = "dinput8.dll";
 export const GAMEPLAY_PATCH_SHA256 =
-  "2c3c8ffbf06c07e1656194c98cc7a25ee76ca1d5182a19fd535fa5f35d1df567";
+  "6ca1a0b1c28f8d11482a416e9f9d8b6330db253a78ed79b9301ec31198ce7845";
 export const GAMEPLAY_PATCH_BYTES = 33_792;
 
 /**
@@ -19,8 +19,6 @@ export const GAMEPLAY_MARKER_FILE_NAME = "rotk-shotgun-sprint.ini";
 
 /** Exact retired ROTK artifacts an automatic migration may replace. */
 export const RETIRED_GAMEPLAY_PATCHES = Object.freeze([
-  // Launchers 2.0.16/2.0.17 routed ROTKConsole through the gated debug path.
-  Object.freeze({ sha256: "6ca1a0b1c28f8d11482a416e9f9d8b6330db253a78ed79b9301ec31198ce7845", bytes: 33_792 }),
   Object.freeze({ sha256: "36fba2037b0c9b1829e7c7e8bbedbcf5a962f495de4e8c63880b785745dcac3a", bytes: 25_088 }),
   Object.freeze({
     // Launcher 1.4.3, retired in 1.4.4 after the crash reports.

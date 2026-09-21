@@ -1,5 +1,5 @@
 /* PS3 stance v16 port. Runs on the game's actor thread, never a polling thread.
- * Owns only idle RVA 1659000 (15 bytes) and public UI action F446E7 (5 bytes).
+ * Owns only idle RVA 1659000 (15 bytes) and console call F4341D (5 bytes).
  * Crouch/Vivox/Steam and the existing CanSprint v3 edits are independent.
  * Removing the marker disables behavior; restart removes every native hook.
  */
@@ -127,12 +127,6 @@ static void stance_idle(BYTE *actor) {
     stance_pressed = pressed;
 }
 static uintptr_t stance_console(uintptr_t manager, uintptr_t b, uintptr_t c, uintptr_t d, uintptr_t e, uintptr_t f) {
-    /* ROTK's UI handles the network-stats action as its public console toggle.
-     * The debug-console action has a separate native mode/role gate, so aliasing
-     * that action can silently do nothing for both players and moderators.
-     * Keep the native network binding (including local repairs) as a fallback.
-     * Command authorization remains on the server; this only opens the UI.
-     */
     uintptr_t original = ((stance_query_fn)(stance_base + 0x11b81c0))(manager, b, c, d, e, f);
     if (InterlockedCompareExchange(&stance_enabled, 0, 0)) {
         BYTE *action = stance_action((BYTE *)manager, "ROTKConsole");
@@ -206,12 +200,12 @@ static void stance_install(BYTE *base) {
     }
     stance_base = base; stance_original_idle = (stance_idle_fn)(uintptr_t)memory;
     memset(idle_jump, 0x90, sizeof(idle_jump)); stance_jump(idle_jump, (void *)(uintptr_t)stance_idle);
-    call_jump[0] = 0xe8; displacement = (int32_t)((memory + 64) - (base + STANCE_CONSOLE_CALL_RVA + 5)); memcpy(call_jump + 1, &displacement, 4);
-    if (!stance_commit(base + 0x1659000, memory, idle_jump, base + STANCE_CONSOLE_CALL_RVA, stance_console_call_guard, call_jump)) {
+    call_jump[0] = 0xe8; displacement = (int32_t)((memory + 64) - (base + 0xf43422)); memcpy(call_jump + 1, &displacement, 4);
+    if (!stance_commit(base + 0x1659000, memory, idle_jump, base + 0xf4341d, stance_console_call_guard, call_jump)) {
         /* Do not free a bridge which may have become visible if protection
          * restoration failed. Disabled wrappers safely call the native path. */
         patch_log("ROTK stance: guarded installation refused; disabled.\n"); return;
     }
     InterlockedExchange(&stance_enabled, 1);
-    patch_log("ROTK stance: native idle and public console installed.\n");
+    patch_log("ROTK stance: native v16 idle and console installed.\n");
 }
