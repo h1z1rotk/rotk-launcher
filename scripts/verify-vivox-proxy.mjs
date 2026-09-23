@@ -3,15 +3,16 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-// Release-owner supplied artifact. The reference C sources intentionally build
-// to native/vivoxproxy/dist and must never replace this pinned release input.
-const expected = "7a6da1dd688fbc62e880535315c7c47f1f36441c1e8a3992d8bf2f9c54a13f55";
+// Pinned release input, built from native/vivoxproxy since launcher 2.0.19
+// (npm run build:vivox:source, then copied here). CI rebuilds the sources twice
+// and requires the same hash; a source build into dist/ never replaces it.
+const expected = "efcd07a32def7c9c8ab9e571a3827223b8a5490ea8d75572907e990bf9b3a301";
 const proxyPath = resolve(process.argv[2] ?? "resources/patches/vivoxsdk_x64.dll");
 const [binary, sidecar] = await Promise.all([
   readFile(proxyPath),
   readFile(`${proxyPath}.sha256`, "utf8"),
 ]);
-assert.equal(binary.length, 198656, "Unexpected Vivox proxy size");
+assert.equal(binary.length, 71680, "Unexpected Vivox proxy size");
 assert.equal(createHash("sha256").update(binary).digest("hex"), expected,
   "The supplied Vivox release proxy has changed");
 assert.equal(sidecar.trim().split(/\s+/u)[0], expected,

@@ -204,8 +204,8 @@ jobs:
         run: |
           npm run build:vivox
           if ($LASTEXITCODE -ne 0) { throw "Vivox release input validation failed." }
-          # Source reproducibility is checked separately; it is not a claim
-          # that these reference sources produce the supplied release binary.
+          # Since 2.0.19 the shipped proxy is this source build: both builds
+          # must reproduce the pinned release input byte for byte.
           npm run build:vivox:source
           if ($LASTEXITCODE -ne 0) { throw "Reference Vivox build failed." }
           $reference = Join-Path $env:GITHUB_WORKSPACE "native\vivoxproxy\dist\vivoxsdk_x64.dll"
@@ -214,7 +214,7 @@ jobs:
           & powershell -NoProfile -ExecutionPolicy Bypass -File native/vivoxproxy/build-v5-compat.ps1 -OutputPath $alternateProxy
           if ($LASTEXITCODE -ne 0) { throw "Second reference Vivox build failed." }
           $alternateHash = (Get-FileHash -LiteralPath $alternateProxy -Algorithm SHA256).Hash
-          if ($hash -ne $alternateHash -or $hash -ne "766A7C84B10B0C9F2A6F3EDB3C58AB8C8E2FFB6B358C0CEF52966DB82EB6957A") {
+          if ($hash -ne $alternateHash -or $hash -ne "EFCD07A32DEF7C9C8AB9E571A3827223B8A5490EA8D75572907E990BF9B3A301") {
             throw "The reference Vivox source build changed: $hash / $alternateHash"
           }
           # Prove neither source build overwrote the release input or sidecar.
