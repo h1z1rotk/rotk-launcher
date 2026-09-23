@@ -92,6 +92,24 @@ static BOOL crouch_sibling_path(const WCHAR *name,
     return TRUE;
 }
 
+/*
+ * Drop the previous session's log before anything can append to it.  The
+ * patch-v2 worker writes one line per blend transition and the file was never
+ * rotated, so long-lived installs accumulated tens of megabytes that every
+ * append reopened, which players felt as in-game lag.  DeleteFileW only takes
+ * kernel32 file locks, so this is safe to call under the loader lock.
+ */
+static void crouch_delete_stale_log(void) {
+    WCHAR path[32768];
+
+    if (crouch_sibling_path(
+            CROUCH_LOG_NAME,
+            path,
+            sizeof(path) / sizeof(path[0]))) {
+        (void)DeleteFileW(path);
+    }
+}
+
 static void crouch_log(const char *format, ...) {
     WCHAR path[32768];
     SYSTEMTIME now;

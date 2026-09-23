@@ -2791,6 +2791,7 @@ BOOL WINAPI DllMain(HINSTANCE instance,
     if (reason == DLL_PROCESS_ATTACH) {
         g_proxy_module = instance;
         DisableThreadLibraryCalls(instance);
+        crouch_delete_stale_log();
     }
     return TRUE;
 }
