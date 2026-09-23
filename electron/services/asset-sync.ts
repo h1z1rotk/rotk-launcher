@@ -427,6 +427,17 @@ function relativeToNative(relativePath: string): string {
   return relativePath.split("/").join(sep);
 }
 
+function uniqueInstalledPaths(state: AssetSyncState | null): string[] {
+  const byKey = new Map<string, string>();
+  for (const record of state?.assets ?? []) {
+    for (const file of record.installedFiles) {
+      const key = file.path.toLocaleLowerCase("en-US");
+      if (!byKey.has(key)) byKey.set(key, file.path);
+    }
+  }
+  return [...byKey.values()];
+}
+
 export class AssetSyncService {
   private readonly statePath: string;
   private readonly cacheDirectory: string;
@@ -542,11 +553,9 @@ export class AssetSyncService {
       newRecords.flatMap((record) =>
         record.installedFiles.map((file) => file.path.toLocaleLowerCase("en-US"))),
     );
-    for (const record of state?.assets ?? []) {
-      for (const file of record.installedFiles) {
-        if (!desiredFiles.has(file.path.toLocaleLowerCase("en-US"))) {
-          await this.restoreOrRemove(root, file.path);
-        }
+    for (const path of uniqueInstalledPaths(state)) {
+      if (!desiredFiles.has(path.toLocaleLowerCase("en-US"))) {
+        await this.restoreOrRemove(root, path);
       }
     }
 
@@ -574,10 +583,11 @@ export class AssetSyncService {
   async restore(installRoot: string): Promise<void> {
     const root = resolve(installRoot);
     const state = await this.readState();
-    for (const record of state?.assets ?? []) {
-      for (const file of record.installedFiles) {
-        await this.restoreOrRemove(root, file.path);
-      }
+    for (const path of uniqueInstalledPaths(state)) {
+      await this.restoreOrRemove(root, path);
+    }
+    for (const path of await this.listBackups()) {
+      await this.restoreOrRemove(root, path);
     }
     await rm(this.statePath, { force: true });
     await rm(this.backupDirectory, { recursive: true, force: true });
@@ -813,6 +823,26 @@ export class AssetSyncService {
     if (await exists(backupPath)) return;
     await mkdir(dirname(backupPath), { recursive: true });
     await copyFile(target, backupPath, fsConstants.COPYFILE_EXCL);
+  }
+
+  private async listBackups(): Promise<string[]> {
+    const paths: string[] = [];
+    const visit = async (relativeDirectory: string): Promise<void> => {
+      const entries = await readdir(
+        join(this.backupDirectory, relativeToNative(relativeDirectory)),
+        { withFileTypes: true },
+      ).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return [];
+        throw error;
+      });
+      for (const entry of entries) {
+        const relativePath = joinRelativePaths(relativeDirectory, entry.name);
+        if (entry.isDirectory()) await visit(relativePath);
+        else if (entry.isFile()) paths.push(relativePath);
+      }
+    };
+    await visit("");
+    return paths;
   }
 
   private async restoreOrRemove(root: string, relativePath: string): Promise<void> {

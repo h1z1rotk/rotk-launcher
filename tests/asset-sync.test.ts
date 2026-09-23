@@ -480,4 +480,62 @@ describe("ROTK asset sync", () => {
     expect(await sync.readState()).toBeNull();
     await expect(stat(join(userData, "asset-backups"))).rejects.toThrow();
   });
+
+  it("restore() recovers originals overwritten by an interrupted sync", async () => {
+    const { userData, root } = await setup();
+    await writeFile(join(root, "replaced.pack"), "vanilla bytes");
+    const replaced = Buffer.from("custom bytes!");
+    const unreachable = Buffer.from("never downloaded");
+    const feed = manifest([
+      assetEntry("replaced", replaced, { installPath: "replaced.pack" }),
+      assetEntry("unreachable", unreachable, { installPath: "unreachable.pack" }),
+    ]);
+    const sync = service(userData, {
+      [FEED_URL]: () => new Response(JSON.stringify(feed)),
+      [feed.assets[0].url]: () => new Response(replaced),
+      [feed.assets[1].url]: () => new Response(null, { status: 503 }),
+    });
+
+    await expect(sync.sync(root)).rejects.toThrow("HTTP 503");
+    expect(await readFile(join(root, "replaced.pack"), "utf8")).toBe("custom bytes!");
+    expect(await sync.readState()).toBeNull();
+
+    await sync.restore(root);
+    expect(await readFile(join(root, "replaced.pack"), "utf8")).toBe("vanilla bytes");
+    await expect(stat(join(userData, "asset-backups"))).rejects.toThrow();
+  });
+
+  it("keeps an original owned by two packs when restoring or dropping them", async () => {
+    const shared = "Resources/shared.dat";
+    const firstZip = buildZip([{ name: shared, data: "first pack" }]);
+    const secondZip = buildZip([{ name: shared, data: "second pack" }]);
+    const feed = manifest([
+      assetEntry("first", firstZip, { type: "zip", installPath: "." }),
+      assetEntry("second", secondZip, { type: "zip", installPath: "." }),
+    ]);
+
+    async function installBoth(): Promise<{ userData: string; root: string }> {
+      const paths = await setup();
+      await mkdir(join(paths.root, "Resources"), { recursive: true });
+      await writeFile(join(paths.root, "Resources", "shared.dat"), "vanilla shared");
+      await service(paths.userData, {
+        [FEED_URL]: () => new Response(JSON.stringify(feed)),
+        [feed.assets[0].url]: () => new Response(new Uint8Array(firstZip)),
+        [feed.assets[1].url]: () => new Response(new Uint8Array(secondZip)),
+      }).sync(paths.root);
+      expect(await readFile(join(paths.root, "Resources", "shared.dat"), "utf8")).toBe("second pack");
+      return paths;
+    }
+
+    const restored = await installBoth();
+    await service(restored.userData, {}).restore(restored.root);
+    expect(await readFile(join(restored.root, "Resources", "shared.dat"), "utf8")).toBe("vanilla shared");
+
+    const dropped = await installBoth();
+    const empty = service(dropped.userData, {
+      [FEED_URL]: () => new Response(JSON.stringify(manifest([], "2.0.0"))),
+    });
+    expect(await empty.sync(dropped.root)).toEqual({ status: "updated", packVersion: "2.0.0" });
+    expect(await readFile(join(dropped.root, "Resources", "shared.dat"), "utf8")).toBe("vanilla shared");
+  });
 });
