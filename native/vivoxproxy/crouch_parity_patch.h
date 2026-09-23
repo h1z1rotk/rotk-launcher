@@ -98,9 +98,14 @@ static BOOL crouch_sibling_path(const WCHAR *name,
  * rotated, so long-lived installs accumulated tens of megabytes that every
  * append reopened, which players felt as in-game lag.  DeleteFileW only takes
  * kernel32 file locks, so this is safe to call under the loader lock.
+ *
+ * The buffer is STATIC, never a local: DllMain can run on a thread with a
+ * small stack, and the 64 KiB local of launcher 2.0.19 overflowed it — every
+ * game process died in PreInitialize with 0xC00000FD. Process attach runs once,
+ * under the loader lock, so a single static buffer is never shared.
  */
 static void crouch_delete_stale_log(void) {
-    WCHAR path[32768];
+    static WCHAR path[32768];
 
     if (crouch_sibling_path(
             CROUCH_LOG_NAME,

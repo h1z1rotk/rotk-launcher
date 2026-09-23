@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-// Pinned release input, built from native/vivoxproxy since launcher 2.0.19
+// Pinned release input, built from native/vivoxproxy since launcher 2.0.19 (fixed in 2.0.20)
 // (npm run build:vivox:source, then copied here). CI rebuilds the sources twice
 // and requires the same hash; a source build into dist/ never replaces it.
-const expected = "efcd07a32def7c9c8ab9e571a3827223b8a5490ea8d75572907e990bf9b3a301";
+const expected = "199f0d288f5bec010c5cf20802eb1dc162d27a05b57699268666e93575fec6dd";
 const proxyPath = resolve(process.argv[2] ?? "resources/patches/vivoxsdk_x64.dll");
 const [binary, sidecar] = await Promise.all([
   readFile(proxyPath),
