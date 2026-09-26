@@ -38,7 +38,7 @@ describe("public ROTK runtime", () => {
     const test = RUNTIME_CONFIGS.test;
 
     expect(test.environment).toBe("development");
-    expect(test.gatewayOrigin).toBe("http://51.255.160.224:8080");
+    expect(test.gatewayOrigin).toBe("http://148.113.198.176:8080");
     expect(test.voiceGrantOrigin).toBe("https://test.rotk.app");
     expect(test.websiteOrigin).toBe("https://test.rotk.app");
     expect(test.launchTicketUrl).toBe("https://test.rotk.app/api/launcher/ticket");
@@ -46,7 +46,7 @@ describe("public ROTK runtime", () => {
       "https://test.rotk.app/api/launcher/attestation/challenge",
     );
     expect(serverList(test)).toBe(
-      "51.255.160.224:20042;51.255.160.224:20043;51.255.160.224:20044;51.255.160.224:20045",
+      "148.113.198.176:20042;148.113.198.176:20043;148.113.198.176:20044;148.113.198.176:20045",
     );
   });
 
@@ -54,7 +54,7 @@ describe("public ROTK runtime", () => {
     const game2 = JSON.stringify(RUNTIME_CONFIGS.game2);
     const test = JSON.stringify(RUNTIME_CONFIGS.test);
 
-    expect(game2).not.toContain("51.255.160.224");
+    expect(game2).not.toContain("148.113.198.176");
     expect(game2).not.toContain("test.rotk.app");
     expect(test).not.toContain("162.19.94.95");
     expect(test).not.toContain("https://rotk.app");
@@ -70,9 +70,9 @@ describe("public ROTK runtime", () => {
     );
 
     expect(args).toContain(
-      "server=51.255.160.224:20042;51.255.160.224:20043;51.255.160.224:20044;51.255.160.224:20045",
+      "server=148.113.198.176:20042;148.113.198.176:20043;148.113.198.176:20044;148.113.198.176:20045",
     );
-    expect(args).toContain("CommandQueue:motd_uri=http://51.255.160.224:8080/");
+    expect(args).toContain("CommandQueue:motd_uri=http://148.113.198.176:8080/");
     expect(args.join(" ")).not.toContain("162.19.94.95");
   });
 

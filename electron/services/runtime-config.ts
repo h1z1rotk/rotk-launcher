@@ -59,11 +59,11 @@ export const RUNTIME_CONFIGS: Readonly<Record<ServerId, RuntimeConfig>> = Object
     label: "ROTK TEST",
     // Same layout as GAME 2 on the test VPS: the game Gateway sits on 8080 and
     // Nginx terminates TLS for test.rotk.app on the same address.
-    gatewayOrigin: "http://51.255.160.224:8080",
+    gatewayOrigin: "http://148.113.198.176:8080",
     // Même contrat que GAME 2 : le grant se prend sur le vhost qui termine le
     // TLS de cet environnement, jamais sur le nom OVH resté sans listener.
     voiceGrantOrigin: "https://test.rotk.app",
-    loginHost: "51.255.160.224",
+    loginHost: "148.113.198.176",
     loginPorts: [20042, 20043, 20044, 20045],
     websiteOrigin: "https://test.rotk.app",
     launchTicketUrl: "https://test.rotk.app/api/launcher/ticket",
